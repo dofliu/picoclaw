@@ -70,10 +70,20 @@ func createToolRegistry(workspace string, restrict bool, cfg *config.Config, msg
 	// Shell execution
 	registry.Register(tools.NewExecTool(workspace, restrict))
 
-	// Web tools
-	braveAPIKey := cfg.Tools.Web.Search.APIKey
-	registry.Register(tools.NewWebSearchTool(braveAPIKey, cfg.Tools.Web.Search.MaxResults))
+	if searchTool := tools.NewWebSearchTool(tools.WebSearchToolOptions{
+		BraveAPIKey:          cfg.Tools.Web.Brave.APIKey,
+		BraveMaxResults:      cfg.Tools.Web.Brave.MaxResults,
+		BraveEnabled:         cfg.Tools.Web.Brave.Enabled,
+		DuckDuckGoMaxResults: cfg.Tools.Web.DuckDuckGo.MaxResults,
+		DuckDuckGoEnabled:    cfg.Tools.Web.DuckDuckGo.Enabled,
+	}); searchTool != nil {
+		registry.Register(searchTool)
+	}
 	registry.Register(tools.NewWebFetchTool(50000))
+
+	// Hardware tools (I2C, SPI) - Linux only, returns error on other platforms
+	registry.Register(tools.NewI2CTool())
+	registry.Register(tools.NewSPITool())
 
 	// Message tool - available to both agent and subagent
 	// Subagent uses it to communicate directly with user
@@ -368,7 +378,7 @@ func (al *AgentLoop) runAgentLoop(ctx context.Context, opts processOptions) (str
 
 	// 6. Save final assistant message to session
 	al.sessions.AddMessage(opts.SessionKey, "assistant", finalContent)
-	al.sessions.Save(al.sessions.GetOrCreate(opts.SessionKey))
+	al.sessions.Save(opts.SessionKey)
 
 	// 7. Optional: summarization
 	if opts.EnableSummary {
@@ -732,7 +742,7 @@ func (al *AgentLoop) summarizeSession(sessionKey string) {
 	if finalSummary != "" {
 		al.sessions.SetSummary(sessionKey, finalSummary)
 		al.sessions.TruncateHistory(sessionKey, 4)
-		al.sessions.Save(al.sessions.GetOrCreate(sessionKey))
+		al.sessions.Save(sessionKey)
 	}
 }
 
