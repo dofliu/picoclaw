@@ -1,0 +1,240 @@
+# Raspberry Pi 4 Docker Validation Guide (ARM64)
+
+This document provides a **full, reproducible workflow** to create a Raspberry Pi 4-like Docker environment (`linux/arm64`), deploy PicoClaw, and validate runtime behavior before moving to real Pi 4 hardware.
+
+> Scope: host machine (x86_64 or arm64) + Docker Engine + Docker Compose.
+
+## 1. Prerequisites on host
+
+### 1.1 Windows host (recommended: Docker Desktop + WSL2)
+
+1. Install **Docker Desktop for Windows**.
+2. Enable **Use WSL 2 based engine** in Docker Desktop settings.
+3. Open **PowerShell** and verify:
+
+```powershell
+docker --version
+docker compose version
+```
+
+If your Windows PC is x86_64/AMD64, install QEMU binfmt for ARM64 emulation:
+
+```powershell
+docker run --privileged --rm tonistiigi/binfmt --install arm64
+```
+
+### 1.2 Linux/macOS host
+
+```bash
+docker --version
+docker compose version
+```
+
+If host is `x86_64`, install QEMU/binfmt:
+
+```bash
+docker run --privileged --rm tonistiigi/binfmt --install arm64
+```
+
+## 2. Windows quick start (PowerShell, copy/paste)
+
+> Run these commands in **PowerShell** from any folder where you want the project.
+
+```powershell
+git clone https://github.com/sipeed/picoclaw.git
+cd picoclaw
+
+docker compose -f docker-compose.pi4.yml build --no-cache
+docker compose -f docker-compose.pi4.yml up -d
+
+docker compose -f docker-compose.pi4.yml exec picoclaw-pi4 bash -lc "uname -m && go version"
+```
+
+Expected architecture output: `aarch64`.
+
+## 3. Build & start Pi4-like environment (cross-platform)
+
+Using helper script (Bash shell):
+
+```bash
+bash scripts/pi4-docker-up.sh
+```
+
+Manual equivalent:
+
+```bash
+docker compose -f docker-compose.pi4.yml build --no-cache
+docker compose -f docker-compose.pi4.yml up -d
+```
+
+Enter container shell:
+
+```bash
+docker compose -f docker-compose.pi4.yml exec picoclaw-pi4 bash
+```
+
+## 4. Deploy PicoClaw in container
+
+Inside container:
+
+```bash
+make build
+make install
+export PATH="$HOME/.local/bin:$PATH"
+picoclaw --help
+picoclaw onboard
+```
+
+Prepare config:
+
+```bash
+mkdir -p ~/.picoclaw
+cp config/config.example.json ~/.picoclaw/config.json
+nano ~/.picoclaw/config.json
+```
+
+## 5. Configure LLM API for testing (important)
+
+You need at least one provider key to run real LLM replies.
+
+### Option A: OpenRouter example
+
+Edit `~/.picoclaw/config.json` in container:
+
+```json
+{
+  "agents": {
+    "defaults": {
+      "provider": "openrouter",
+      "model": "openai/gpt-4o-mini",
+      "workspace": "~/.picoclaw/workspace",
+      "max_tokens": 2048,
+      "temperature": 0.3,
+      "max_tool_iterations": 20
+    }
+  },
+  "providers": {
+    "openrouter": {
+      "api_key": "YOUR_OPENROUTER_API_KEY",
+      "api_base": "https://openrouter.ai/api/v1"
+    }
+  }
+}
+```
+
+### Option B: OpenAI example
+
+```json
+{
+  "agents": {
+    "defaults": {
+      "provider": "openai",
+      "model": "gpt-4o-mini",
+      "workspace": "~/.picoclaw/workspace",
+      "max_tokens": 2048,
+      "temperature": 0.3,
+      "max_tool_iterations": 20
+    }
+  },
+  "providers": {
+    "openai": {
+      "api_key": "YOUR_OPENAI_API_KEY",
+      "api_base": "https://api.openai.com/v1"
+    }
+  }
+}
+```
+
+## 6. LLM response test commands (simple Q&A)
+
+Run inside container:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+
+# basic math
+picoclaw agent -m "What is 2+2? Reply with only the number."
+
+# chinese Q&A
+picoclaw agent -m "用一句話介紹樹莓派4"
+
+# structured output check
+picoclaw agent -m "Return JSON only: {\"status\":\"ok\",\"sum\":4}"
+```
+
+If these return valid model outputs, your LLM API setup is working.
+
+## 7. One-command test pipeline
+
+```bash
+bash scripts/pi4-docker-test.sh
+```
+
+This script runs:
+- arm64 environment check (`uname -m`, `go version`)
+- build (`make build`)
+- install (`make install`)
+- cli sanity (`picoclaw --help`)
+- workspace init (`picoclaw onboard`)
+- offline smoke (`picoclaw agent -m "health check"`)
+
+## 8. Full feature validation checklist (all intelligent-agent functions)
+
+To validate **all capabilities**, provide real tokens in `~/.picoclaw/config.json` (inside container) and run the following matrix.
+
+### 8.1 Core agent abilities
+
+```bash
+picoclaw agent -m "請建立一個 TODO 清單並儲存到 workspace"
+picoclaw agent -m "幫我搜尋最近一週的 AI 新聞，整理重點"
+picoclaw agent -m "讀取專案 README 並摘要"
+```
+
+Expected: model response, tool usage logs, workspace file outputs.
+
+### 8.2 Tools validation
+
+```bash
+picoclaw agent -m "請用 shell 指令顯示目前目錄檔案"
+picoclaw agent -m "建立 test.txt 並寫入 hello"
+picoclaw agent -m "幫我規劃每日上午九點提醒事項"
+```
+
+Expected: shell/file/cron related behavior appears in outputs and workspace.
+
+### 8.3 Channel/bot integration (optional but recommended)
+
+Configure one by one and launch gateway:
+
+```bash
+picoclaw gateway
+```
+
+Validate each channel by sending a real message:
+- Discord
+- Telegram
+- Slack
+- Feishu / DingTalk / WhatsApp / QQ / MaixCAM (if used)
+
+Expected: inbound message received, agent generates reply, no crash/restart loops.
+
+## 9. Export same setup to real Raspberry Pi 4
+
+After Docker validation is stable, deploy on real Pi4 with the same steps:
+
+1. Install dependencies and Go
+2. `make build && make install`
+3. Copy verified `~/.picoclaw/config.json`
+4. Run `picoclaw gateway`
+5. (Optional) enable `systemd --user` service
+
+Reference production guide: `docs/raspberry-pi4-deployment.md`.
+
+## 10. Limitations and parity notes
+
+- Docker arm64 on x86 uses emulation; performance differs from real Pi4.
+- Hardware-specific peripherals (camera, GPIO, audio devices) are not fully represented.
+- API/network-dependent behavior still requires real credentials and outbound network.
+
+Despite these limitations, this workflow is valid for **build correctness, runtime CLI behavior, configuration validation, and major agent feature smoke tests**.
+
