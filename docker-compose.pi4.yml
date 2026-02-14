@@ -1,0 +1,18 @@
+services:
+  picoclaw-pi4:
+    build:
+      context: .
+      dockerfile: docker/pi4/Dockerfile
+    platform: linux/arm64
+    container_name: picoclaw-pi4
+    working_dir: /workspace/picoclaw
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./:/workspace/picoclaw
+      - picoclaw-pi4-home:/workspace/.picoclaw
+    environment:
+      - PICOCLAW_HOME=/workspace/.picoclaw
+
+volumes:
+  picoclaw-pi4-home:
