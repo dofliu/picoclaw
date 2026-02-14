@@ -115,8 +115,10 @@ PicoClaw can be deployed on almost any Linux device!
 
 Deploying on Raspberry Pi 4 (Pi OS 64-bit) is supported.
 
-- Step-by-step guide: [`docs/raspberry-pi4-deployment.md`](docs/raspberry-pi4-deployment.md)
-- Quick installer script: `scripts/setup-pi4.sh`
+- Step-by-step production guide: [`docs/raspberry-pi4-deployment.md`](docs/raspberry-pi4-deployment.md)
+- Docker ARM64 validation guide: [`docs/raspberry-pi4-docker-validation.md`](docs/raspberry-pi4-docker-validation.md)
+- Quick installer script (real Pi): `scripts/setup-pi4.sh`
+- Docker helpers: `scripts/pi4-docker-up.sh`, `scripts/pi4-docker-test.sh`
 
 Quick path:
 

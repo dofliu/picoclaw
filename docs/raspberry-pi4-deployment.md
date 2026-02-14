@@ -2,6 +2,17 @@
 
 This guide targets **Raspberry Pi 4 (ARM64)** running Raspberry Pi OS Bookworm.
 
+## 0) Docker Validation First (Recommended)
+
+Before deploying to physical Pi4 hardware, validate in the ARM64 Docker environment:
+
+```bash
+bash scripts/pi4-docker-up.sh
+bash scripts/pi4-docker-test.sh
+```
+
+Detailed tutorial: [`docs/raspberry-pi4-docker-validation.md`](raspberry-pi4-docker-validation.md).
+
 ## 1) System preparation
 
 ```bash
@@ -127,3 +138,14 @@ docker buildx build --platform linux/arm64 -t picoclaw:pi4 .
 - systemd service restarts repeatedly:
   - Run `picoclaw gateway` directly first to verify config.
 
+
+## 8) Ready-for-hardware acceptance criteria
+
+You can move this setup to real Raspberry Pi 4 when all conditions are true:
+
+- `make build` and `make install` pass in ARM64 Docker.
+- `picoclaw onboard` and `picoclaw --help` run successfully.
+- `picoclaw agent -m ...` basic workflow works with your model provider config.
+- (If used) target channel integration (Discord/Telegram/Slack/...) can receive and reply.
+
+At that point, Docker and real-device steps are identical except package installation and native runtime performance.
