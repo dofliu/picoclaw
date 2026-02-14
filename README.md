@@ -96,6 +96,21 @@ PicoClaw can be deployed on almost any Linux device!
 
 🌟 More Deployment Cases Await！
 
+## 🍓 Raspberry Pi 4 Deployment
+
+Deploying on Raspberry Pi 4 (Pi OS 64-bit) is supported.
+
+- Step-by-step guide: [`docs/raspberry-pi4-deployment.md`](docs/raspberry-pi4-deployment.md)
+- Quick installer script: `scripts/setup-pi4.sh`
+
+Quick path:
+
+```bash
+git clone https://github.com/sipeed/picoclaw.git
+cd picoclaw
+bash scripts/setup-pi4.sh
+```
+
 ## 📦 Install
 
 ### Install with precompiled binary
